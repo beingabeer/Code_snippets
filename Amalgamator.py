@@ -19,6 +19,3 @@ def amalgam(string_1, string_2):
         word = ''
 
     print(tup_list)
-
-
-amalgam('abeer', 'ami')
