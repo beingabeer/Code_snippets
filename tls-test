@@ -1,0 +1,31 @@
+$apiEndpoint = "https://your-openshift-api-endpoint"
+
+# Set the desired cipher suite
+$cipherSuites = @(
+    [System.Security.Authentication.TlsCipherSuite]::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+    [System.Security.Authentication.TlsCipherSuite]::TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+    [System.Security.Authentication.TlsCipherSuite]::TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+)
+
+# Create the API request
+$request = [System.Net.HttpWebRequest]::Create($apiEndpoint)
+
+# Configure the cipher suites
+$request.CipherSuites.Clear()
+$cipherSuites | ForEach-Object {
+    $request.CipherSuites.Add($_)
+}
+
+# Disable certificate validation (optional)
+$request.ServerCertificateValidationCallback = {$true}
+
+# Send the request and get the response
+$response = $request.GetResponse()
+
+# Read the response
+$reader = [System.IO.StreamReader]($response.GetResponseStream())
+$responseContent = $reader.ReadToEnd()
+$reader.Close()
+
+# Display the response content
+Write-Output $responseContent
