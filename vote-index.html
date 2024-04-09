@@ -1,0 +1,48 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote for the Best Programming Language</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Vote for the Best Programming Language</h1>
+    <ul id="languageList">
+        {% for language in languages %}
+            <li>
+                <button class="voteButton" data-language="{{ language }}">{{ language }}</button>
+                <span class="voteCount">{{ languages[language] }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.voteButton').click(function() {
+                var selectedLanguage = $(this).data('language');
+                $.ajax({
+                    type: 'POST',
+                    url: '/vote',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ language: selectedLanguage }),
+                    success: function(response) {
+                        if (response.success) {
+                            var newCount = parseInt($('.voteCount[data-language="' + selectedLanguage + '"]').text()) + 1;
+                            $('.voteCount[data-language="' + selectedLanguage + '"]').text(newCount);
+                            alert('Vote submitted successfully!');
+                        } else {
+                            alert('Failed to submit vote: ' + response.error);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
