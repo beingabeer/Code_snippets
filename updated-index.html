@@ -1,4 +1,3 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,8 +29,7 @@
                     data: JSON.stringify({ language: selectedLanguage }),
                     success: function(response) {
                         if (response.success) {
-                            var newCount = parseInt($('.voteCount[data-language="' + selectedLanguage + '"]').text()) + 1;
-                            $('.voteCount[data-language="' + selectedLanguage + '"]').text(newCount);
+                            $('.voteCount[data-language="' + selectedLanguage + '"]').text(response.new_count);
                             alert('Vote submitted successfully!');
                         } else {
                             alert('Failed to submit vote: ' + response.error);
