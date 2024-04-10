@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote for the Best Programming Language</title>
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS for the total vote count */
+        .total-votes {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Total vote count display -->
+    <div class="total-votes" id="totalVotes"></div>
+
+    <!-- Canvas for the vote count graph -->
+    <canvas id="voteChart" width="400" height="200"></canvas>
+
+    <!-- Your JavaScript code here -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+            // Update total vote count when vote update event received
+            socket.on('vote_update', function(data) {
+                updateTotalVotes();
+            });
+
+            // Function to update total vote count
+            function updateTotalVotes() {
+                var totalVotes = 0;
+                $('.voteCount').each(function() {
+                    totalVotes += parseInt($(this).text());
+                });
+                $('#totalVotes').text('Total Vote Count: ' + totalVotes);
+            }
+
+            // Initial update of total vote count
+            updateTotalVotes();
+
+            // Additional JavaScript code for handling votes and chart, if any
+        });
+    </script>
+</body>
+</html>
