@@ -9,10 +9,30 @@
 </head>
 <body>
     <h1>Voting Results</h1>
-    <ul>
+    <ul id="resultsList">
         {% for language, votes in sorted_votes %}
-            <li>{{ language }}: {{ votes }}</li>
+            <li id="{{ language }}">
+                {{ language }}: <span class="voteCount">{{ votes }}</span>
+            </li>
         {% endfor %}
     </ul>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        $(document).ready(function() {
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
+            socket.on('vote_update', function(data) {
+                var language = data.language;
+                var count = data.count;
+                $('#' + language + ' .voteCount').text(count);
+            });
+        });
+    </script>
 </body>
 </html>
