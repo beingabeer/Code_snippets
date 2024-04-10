@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AJAX Alert</title>
+    <style>
+        /* CSS for the AJAX alert pop-up */
+        .ajax-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000; /* Ensure it appears on top of other elements */
+        }
+    </style>
+</head>
+<body>
+    <!-- Your HTML content here -->
+
+    <!-- Your JavaScript code here -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
+            socket.on('vote_update', function(data) {
+                var language = data.language;
+                var count = data.count;
+                $('#' + language + '_count').text(count);
+            });
+
+            $('.voteButton').click(function() {
+                var selectedLanguage = $(this).data('language');
+                $.ajax({
+                    type: 'POST',
+                    url: '/vote',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ language: selectedLanguage }),
+                    success: function(response) {
+                        if (response.success) {
+                            // Center the success alert
+                            var alertSuccess = $('<div class="ajax-alert">Vote submitted successfully!</div>').appendTo('body');
+                            setTimeout(function() {
+                                alertSuccess.remove();
+                            }, 3000); // Remove after 3 seconds
+                        } else {
+                            // Center the error alert
+                            var alertError = $('<div class="ajax-alert">Failed to submit vote: ' + response.error + '</div>').appendTo('body');
+                            setTimeout(function() {
+                                alertError.remove();
+                            }, 3000); // Remove after 3 seconds
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // Center the error alert
+                        var alertError = $('<div class="ajax-alert">Error: ' + error + '</div>').appendTo('body');
+                        setTimeout(function() {
+                            alertError.remove();
+                        }, 3000); // Remove after 3 seconds
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
