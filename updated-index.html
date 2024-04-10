@@ -1,3 +1,4 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,21 +6,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vote for the Best Programming Language</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Vote for the Best Programming Language</h1>
-    <ul id="languageList">
-        {% for language, votes in language_votes.items() %}
-            <li>
-                <button class="voteButton" data-language="{{ language }}">{{ language }}</button>
-                <span class="voteCount">{{ votes }}</span>
-            </li>
+    
+    <div id="languageList">
+        {% for language in language_votes %}
+            <div class="language">
+                <img src="{{ url_for('static', filename='img/' + language.lower() + '.png') }}" alt="{{ language }}">
+                <button class="voteButton" data-language="{{ language }}">Vote</button>
+                <span class="voteCount" id="{{ language }}_count">{{ language_votes[language] }}</span>
+            </div>
         {% endfor %}
-    </ul>
+    </div>
+
+    <canvas id="voteChart" width="400" height="200"></canvas>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
+            socket.on('vote_update', function(data) {
+                var language = data.language;
+                var count = data.count;
+                $('#' + language + '_count').text(count);
+                updateChart();
+            });
+
             $('.voteButton').click(function() {
                 var selectedLanguage = $(this).data('language');
                 $.ajax({
@@ -29,7 +48,6 @@
                     data: JSON.stringify({ language: selectedLanguage }),
                     success: function(response) {
                         if (response.success) {
-                            $('.voteCount[data-language="' + selectedLanguage + '"]').text(response.new_count);
                             alert('Vote submitted successfully!');
                         } else {
                             alert('Failed to submit vote: ' + response.error);
@@ -40,6 +58,41 @@
                     }
                 });
             });
+
+            // Function to update the chart
+            function updateChart() {
+                var labels = [];
+                var data = [];
+                $('#languageList .language').each(function() {
+                    labels.push($(this).find('img').attr('alt'));
+                    data.push(parseInt($(this).find('.voteCount').text()));
+                });
+
+                var ctx = document.getElementById('voteChart').getContext('2d');
+                var myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Vote Count',
+                            data: data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Initial chart rendering
+            updateChart();
         });
     </script>
 </body>
