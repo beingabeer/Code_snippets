@@ -4,33 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vote for the Best Programming Language</title>
-    <!-- Include Chart.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* CSS for the total vote count */
-        .total-votes {
-            text-align: center;
-            font-size: 20px;
-            margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <!-- Total vote count display -->
-    <div class="total-votes" id="totalVotes"></div>
+    <div id="totalVotes"></div>
 
-    <!-- Canvas for the vote count graph -->
-    <canvas id="voteChart" width="400" height="200"></canvas>
+    <h1>Vote for the Best Programming Language</h1>
+    <ul id="languageList">
+        {% for language, votes in language_votes.items() %}
+            <li>
+                <button class="voteButton" data-language="{{ language }}">{{ language }}</button>
+                <span class="voteCount" id="{{ language }}_count">{{ votes }}</span>
+            </li>
+        {% endfor %}
+    </ul>
 
-    <!-- Your JavaScript code here -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
         $(document).ready(function() {
             var socket = io.connect('http://' + document.domain + ':' + location.port);
 
-            // Update total vote count when vote update event received
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+
             socket.on('vote_update', function(data) {
-                updateTotalVotes();
+                var language = data.language;
+                var count = data.count;
+                $('#' + language + '_count').text(count);
+                updateTotalVotes(); // Update total vote count whenever a vote is updated
+            });
+
+            $('.voteButton').click(function() {
+                var selectedLanguage = $(this).data('language');
+                $.ajax({
+                    type: 'POST',
+                    url: '/vote',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ language: selectedLanguage }),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Vote submitted successfully!');
+                        } else {
+                            alert('Failed to submit vote: ' + response.error);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
             });
 
             // Function to update total vote count
@@ -44,8 +68,6 @@
 
             // Initial update of total vote count
             updateTotalVotes();
-
-            // Additional JavaScript code for handling votes and chart, if any
         });
     </script>
 </body>
