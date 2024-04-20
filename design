@@ -1,0 +1,18 @@
+
+
++---------------------+    +---------------------+    +---------------------+
+|   Client Interface  | -> |   Voting Service    | -> |    Redis Database   |
++---------------------+    +---------------------+    +---------------------+
+
+
+
+
+Components:
+
+    Client Interface: This represents the user-facing interface where users interact with the application to cast their votes. This could be a web application, mobile app, or any other frontend interface.
+
+    API Gateway (Optional): An API Gateway can be used to manage incoming requests from the client interface. It serves as a single entry point for clients and can handle tasks like authentication, request routing, and rate limiting.
+
+    Voting Service: This is a Knative service responsible for handling incoming requests to cast votes. It receives requests from the client interface/API Gateway, processes the vote, and interacts with the Redis database to persist the vote data.
+
+    Redis Database: Redis is used as the backend database to store the voting data. It stores the vote counts for each programming language and provides fast read and write access for the voting service.
