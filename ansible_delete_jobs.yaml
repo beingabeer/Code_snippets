@@ -54,3 +54,51 @@
         msg: "Deleted job with ID: {{ item }}"
       loop: "{{ deleted_jobs.results | map(attribute='item') | list }}"
       when: not dry_run | bool
+
+
+
+
+
+
+
+
+
+
+
+
+---
+- name: Clean up successful jobs older than 3 days for a specific template in Ansible Tower
+  hosts: localhost
+  tasks:
+    - name: Define the job template ID and cutoff date
+      set_fact:
+        job_template_id: "your_job_template_id"  # Replace with your specific job template ID
+        cutoff_date: "{{ (ansible_date_time.date | to_datetime('%Y-%m-%d')) | subtract(3, 'days') | string }}"
+
+    - name: Fetch successful jobs for the specified job template
+      uri:
+        url: "https://your-ansible-tower-url/api/v2/jobs/?job_template={{ job_template_id }}&status=successful"
+        method: GET
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+      register: jobs_response
+
+    - name: Filter jobs older than 3 days
+      set_fact:
+        jobs_to_delete: "{{ jobs_response.json.results | selectattr('created', 'lt', cutoff_date) | map(attribute='id') | list }}"
+
+    - name: Delete each completed job older than 3 days
+      uri:
+        url: "https://your-ansible-tower-url/api/v2/jobs/{{ item }}/"
+        method: DELETE
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+      loop: "{{ jobs_to_delete }}"
+      loop_control:
+        label: "{{ item }}"
+      when: jobs_to_delete | length > 0
+
