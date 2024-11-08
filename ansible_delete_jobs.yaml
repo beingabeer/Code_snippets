@@ -33,7 +33,7 @@
         msg: "Dry run - Jobs to be deleted: {{ old_jobs }}"
       when: dry_run | bool
 
-    - name: Delete jobs older than the threshold (if dry run is off)
+    - name: Delete jobs older than the threshold (if dry run is off and item is not empty)
       uri:
         url: "{{ tower_host }}/api/v2/jobs/{{ item }}/"
         method: DELETE
@@ -42,7 +42,10 @@
         force_basic_auth: yes
         validate_certs: no
       loop: "{{ old_jobs }}"
-      when: not dry_run | bool
+      # when: not dry_run | bool
+      when: 
+        - not dry_run | bool
+        - item | length > 0
       ignore_errors: yes
       register: deleted_jobs
 
