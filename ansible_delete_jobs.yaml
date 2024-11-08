@@ -47,3 +47,65 @@
         msg: "Deleted job with ID: {{ item }}"
       loop: "{{ deleted_jobs.results | map(attribute='item') | list }}"
       when: not dry_run | bool
+
+
+
+
+
+
+
+
+
+
+
+---
+- name: Fetch successful jobs for a given job template ID from Ansible Tower
+  hosts: localhost
+  gather_facts: no
+  vars:
+    tower_url: "https://your-ansible-tower-url"  # Replace with your Ansible Tower URL
+    tower_username: "your_username"  # Replace with your Ansible Tower username
+    tower_password: "your_password"  # Replace with your Ansible Tower password
+    template_id: 123  # Replace with your job template ID
+    page_size: 100  # Define how many jobs to fetch per page
+    status_filter: "successful"  # Filter for successful jobs
+  tasks:
+    - name: Get first page of jobs
+      uri:
+        url: "{{ tower_url }}/api/v2/job_templates/{{ template_id }}/jobs/"
+        method: GET
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        params:
+          status: "{{ status_filter }}"
+          page_size: "{{ page_size }}"
+        return_content: yes
+      register: job_list
+      no_log: true
+
+    - name: Loop through all pages and get all successful jobs
+      uri:
+        url: "{{ item }}"
+        method: GET
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        return_content: yes
+      loop: "{{ job_list.json.results | selectattr('status', 'equalto', status_filter) | list }}"
+      register: all_jobs
+      when: job_list.json.next is not none
+
+    - name: Collect all jobs across all pages
+      set_fact:
+        successful_jobs: "{{ job_list.json.results | selectattr('status', 'equalto', status_filter) | list }} + {{ all_jobs.results | map(attribute='json.results') | list | flatten }}"
+
+    - name: Display all successful job IDs
+      debug:
+        msg: "{{ item.id }}"
+      loop: "{{ successful_jobs }}"
+
