@@ -1,0 +1,53 @@
+---
+- name: Delete successful Ansible Tower jobs older than 3 days for a specified job template
+  hosts: localhost
+  gather_facts: no
+  vars:
+    tower_host: "https://your_ansible_tower_url"  # Replace with your Ansible Tower URL
+    tower_username: "your_username"               # Replace with your Ansible Tower username
+    tower_password: "your_password"               # Replace with your Ansible Tower password
+    job_template_id: 123                          # Replace with the specific job template ID
+    days_threshold: 3                             # Days threshold for job age
+    dry_run: true                                 # Set to true for dry run, false for actual deletion
+
+  tasks:
+    - name: Get list of successful jobs for the specified job template
+      uri:
+        url: "{{ tower_host }}/api/v2/jobs/"
+        method: GET
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+        return_content: yes
+      register: job_response
+
+    - name: Filter jobs older than the specified number of days
+      set_fact:
+        old_jobs: "{{ job_response.json.results | selectattr('job_template', 'equalto', job_template_id) | selectattr('status', 'equalto', 'successful') | selectattr('finished', 'defined') | selectattr('finished', 'search', older_than) | map(attribute='id') | list }}"
+      vars:
+        older_than: "^(?:(?!(?:{{ (ansible_date_time.date | to_datetime) - timedelta(days=days_threshold) }})).)*$"  # Regex for dates older than the threshold
+
+    - name: Show jobs that would be deleted (Dry Run)
+      debug:
+        msg: "Dry run - Jobs to be deleted: {{ old_jobs }}"
+      when: dry_run | bool
+
+    - name: Delete jobs older than the threshold (if dry run is off)
+      uri:
+        url: "{{ tower_host }}/api/v2/jobs/{{ item }}/"
+        method: DELETE
+        user: "{{ tower_username }}"
+        password: "{{ tower_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+      loop: "{{ old_jobs }}"
+      when: not dry_run | bool
+      ignore_errors: yes
+      register: deleted_jobs
+
+    - name: Report deletion results
+      debug:
+        msg: "Deleted job with ID: {{ item }}"
+      loop: "{{ deleted_jobs.results | map(attribute='item') | list }}"
+      when: not dry_run | bool
