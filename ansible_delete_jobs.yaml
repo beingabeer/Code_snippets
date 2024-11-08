@@ -102,3 +102,37 @@
         label: "{{ item }}"
       when: jobs_to_delete | length > 0
 
+
+
+
+
+
+
+
+---
+- name: Find Ansible Tower jobs older than 3 days
+  hosts: localhost
+  gather_facts: no
+  vars:
+    tower_api_url: "https://your-ansible-tower-instance/api/v2/jobs/"
+    api_token: "your_api_token"
+    days_threshold: 3  # jobs older than 3 days will be retrieved
+    headers:
+      Authorization: "Bearer {{ api_token }}"
+  tasks:
+    - name: Get all jobs from Ansible Tower API
+      uri:
+        url: "{{ tower_api_url }}"
+        method: GET
+        headers: "{{ headers }}"
+        validate_certs: no
+        return_content: yes
+      register: tower_jobs_response
+
+    - name: Parse the jobs and filter those older than the threshold
+      set_fact:
+        old_jobs: "{{ tower_jobs_response.json.results | selectattr('created', 'search', '.*T.*Z$') | selectattr('created', 'lt', (ansible_date_time.iso8601 | to_datetime | subtract_days(days_threshold) | to_datetime | to_iso8601)) | list }}"
+
+    - name: Display jobs older than 3 days
+      debug:
+        msg: "{{ old_jobs }}"
