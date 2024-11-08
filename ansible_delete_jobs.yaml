@@ -1,19 +1,18 @@
 ---
-- name: Delete successful Ansible Tower jobs older than 3 days for a specified job template
+- name: Delete successful jobs from Ansible Tower for a specific template (Dry Run)
   hosts: localhost
   gather_facts: no
   vars:
     tower_host: "https://your_ansible_tower_url"  # Replace with your Ansible Tower URL
-    tower_username: "your_username"               # Replace with your Ansible Tower username
-    tower_password: "your_password"               # Replace with your Ansible Tower password
-    job_template_id: 123                          # Replace with the specific job template ID
-    days_threshold: 3                             # Days threshold for job age
+    tower_username: "your_username"              # Replace with your Ansible Tower username
+    tower_password: "your_password"              # Replace with your Ansible Tower password
+    job_template_id: 123                         # Replace with the specific job template ID
     dry_run: true                                 # Set to true for dry run, false for actual deletion
 
   tasks:
     - name: Get list of successful jobs for the specified job template
       uri:
-        url: "{{ tower_host }}/api/v2/jobs/"
+        url: "{{ tower_host }}/api/v2/jobs/?status=successful&job_template={{ job_template_id }}"
         method: GET
         user: "{{ tower_username }}"
         password: "{{ tower_password }}"
@@ -22,18 +21,12 @@
         return_content: yes
       register: job_response
 
-    - name: Filter jobs older than the specified number of days
-      set_fact:
-        old_jobs: "{{ job_response.json.results | selectattr('job_template', 'equalto', job_template_id) | selectattr('status', 'equalto', 'successful') | selectattr('finished', 'defined') | selectattr('finished', 'search', older_than) | map(attribute='id') | list }}"
-      vars:
-        older_than: "^(?:(?!(?:{{ (ansible_date_time.date | to_datetime) - timedelta(days=days_threshold) }})).)*$"  # Regex for dates older than the threshold
-
     - name: Show jobs that would be deleted (Dry Run)
       debug:
-        msg: "Dry run - Jobs to be deleted: {{ old_jobs }}"
+        msg: "Dry run - Jobs to be deleted: {{ job_response.json.results | map(attribute='id') | list }}"
       when: dry_run | bool
 
-    - name: Delete jobs older than the threshold (if dry run is off and item is not empty)
+    - name: Delete successful jobs (if dry run is off and item is not empty)
       uri:
         url: "{{ tower_host }}/api/v2/jobs/{{ item }}/"
         method: DELETE
@@ -41,98 +34,16 @@
         password: "{{ tower_password }}"
         force_basic_auth: yes
         validate_certs: no
-      loop: "{{ old_jobs }}"
-      # when: not dry_run | bool
-      when: 
-        - not dry_run | bool
-        - item | length > 0
+      loop: "{{ job_response.json.results | map(attribute='id') | list }}"
+      when: not dry_run | bool
       ignore_errors: yes
+      loop_control:
+        loop_var: item
+        condition: "{{ item is not none and item != '' }}"
       register: deleted_jobs
 
-    - name: Report deletion results
+    - name: Report deleted jobs (Dry Run or Actual Deletion)
       debug:
         msg: "Deleted job with ID: {{ item }}"
       loop: "{{ deleted_jobs.results | map(attribute='item') | list }}"
       when: not dry_run | bool
-
-
-
-
-
-
-
-
-
-
-
-
----
-- name: Clean up successful jobs older than 3 days for a specific template in Ansible Tower
-  hosts: localhost
-  tasks:
-    - name: Define the job template ID and cutoff date
-      set_fact:
-        job_template_id: "your_job_template_id"  # Replace with your specific job template ID
-        cutoff_date: "{{ (ansible_date_time.date | to_datetime('%Y-%m-%d')) | subtract(3, 'days') | string }}"
-
-    - name: Fetch successful jobs for the specified job template
-      uri:
-        url: "https://your-ansible-tower-url/api/v2/jobs/?job_template={{ job_template_id }}&status=successful"
-        method: GET
-        user: "{{ tower_username }}"
-        password: "{{ tower_password }}"
-        force_basic_auth: yes
-        validate_certs: no
-      register: jobs_response
-
-    - name: Filter jobs older than 3 days
-      set_fact:
-        jobs_to_delete: "{{ jobs_response.json.results | selectattr('created', 'lt', cutoff_date) | map(attribute='id') | list }}"
-
-    - name: Delete each completed job older than 3 days
-      uri:
-        url: "https://your-ansible-tower-url/api/v2/jobs/{{ item }}/"
-        method: DELETE
-        user: "{{ tower_username }}"
-        password: "{{ tower_password }}"
-        force_basic_auth: yes
-        validate_certs: no
-      loop: "{{ jobs_to_delete }}"
-      loop_control:
-        label: "{{ item }}"
-      when: jobs_to_delete | length > 0
-
-
-
-
-
-
-
-
----
-- name: Find Ansible Tower jobs older than 3 days
-  hosts: localhost
-  gather_facts: no
-  vars:
-    tower_api_url: "https://your-ansible-tower-instance/api/v2/jobs/"
-    api_token: "your_api_token"
-    days_threshold: 3  # jobs older than 3 days will be retrieved
-    headers:
-      Authorization: "Bearer {{ api_token }}"
-  tasks:
-    - name: Get all jobs from Ansible Tower API
-      uri:
-        url: "{{ tower_api_url }}"
-        method: GET
-        headers: "{{ headers }}"
-        validate_certs: no
-        return_content: yes
-      register: tower_jobs_response
-
-    - name: Parse the jobs and filter those older than the threshold
-      set_fact:
-        old_jobs: "{{ tower_jobs_response.json.results | selectattr('created', 'search', '.*T.*Z$') | selectattr('created', 'lt', (ansible_date_time.iso8601 | to_datetime | subtract_days(days_threshold) | to_datetime | to_iso8601)) | list }}"
-
-    - name: Display jobs older than 3 days
-      debug:
-        msg: "{{ old_jobs }}"
